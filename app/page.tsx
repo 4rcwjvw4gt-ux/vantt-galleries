@@ -167,7 +167,7 @@ export default function Home() {
         {(data?.albums||[]).map((a:any)=><div className="card" key={a.id}>
           <div className="cover"><b>{a.title}</b></div>
           <div className="body">
-            <div className="meta">{a.event_date||"Sem data"} · {a.photoCount||0} FOTOS</div>
+            <div className="meta">{a.event_date||"Sem data"} · {a.photoCount||0} FOTOS · <strong className="downloads">{a.downloadCount||0} DOWNLOADS</strong></div>
             <div className="actions">
               <button type="button" onClick={()=>{setUploadAlbum(a);setUploadStatus("");setError("");}}>ADICIONAR FOTOS</button>
               <button type="button" onClick={()=>copyGalleryLink(a)}>{copiedAlbum===a.id ? "LINK COPIADO ✓" : "COPIAR LINK"}</button>
