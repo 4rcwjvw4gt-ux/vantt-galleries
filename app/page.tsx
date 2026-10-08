@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { supabaseBrowser } from "@/lib/supabase-browser";
 
 type Data = { clients: any[]; albums: any[] };
 
@@ -16,6 +17,10 @@ export default function Home() {
   const [albumDescription, setAlbumDescription] = useState("");
   const [clientId, setClientId] = useState("");
   const [saving, setSaving] = useState(false);
+  const [uploadAlbum, setUploadAlbum] = useState<any>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
 
   async function refresh() {
     try {
@@ -64,6 +69,48 @@ export default function Home() {
     finally{setSaving(false);}
   }
 
+  async function uploadFiles(files: FileList | null) {
+    if (!files || !uploadAlbum) return;
+    setUploading(true); setError("");
+    const total = files.length;
+    let done = 0;
+    try {
+      for (const file of Array.from(files)) {
+        setUploadStatus(`A enviar ${done + 1} de ${total}: ${file.name}`);
+        const u = await fetch("/api/admin", {
+          method:"POST",
+          headers:{"content-type":"application/json"},
+          body:JSON.stringify({action:"upload-url",album_id:uploadAlbum.id,filename:file.name})
+        });
+        const uj = await u.json();
+        if (!u.ok) throw new Error(uj.error || "Não foi possível preparar o upload.");
+
+        const { error: uploadError } = await supabaseBrowser.storage
+          .from("photos")
+          .uploadToSignedUrl(uj.path, uj.token, file);
+        if (uploadError) throw uploadError;
+
+        const p = await fetch("/api/admin", {
+          method:"POST",
+          headers:{"content-type":"application/json"},
+          body:JSON.stringify({action:"photo",album_id:uploadAlbum.id,path:uj.path,filename:file.name})
+        });
+        const pj = await p.json();
+        if (!p.ok) throw new Error(pj.error || "Não foi possível guardar a fotografia.");
+
+        done++;
+      }
+      setUploadStatus(`${done} fotografias adicionadas.`);
+      await refresh();
+      setTimeout(() => setUploadStatus(""), 2500);
+    } catch(e) {
+      setError(e instanceof Error ? e.message : "Erro no upload.");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
   if (checking) return <main className="login"><div className="box"><div className="eyebrow">VANTT GALLERIES</div><h1>A ligar...</h1></div></main>;
 
   if (!authed) return <>
@@ -80,6 +127,8 @@ export default function Home() {
     <main className="main">
       <div className="head"><div><div className="eyebrow">PRIVATE ADMIN</div><div className="title">Galerias</div></div></div>
       {error&&<div className="error">{error}</div>}
+      {uploadStatus&&<div className="notice" style={{marginBottom:16}}>{uploadStatus}</div>}
+
       <div className="grid" style={{marginBottom:32}}>
         <form className="card" onSubmit={createClient} style={{padding:24}}>
           <div className="eyebrow">01 · CLIENTE</div><h2 style={{margin:"10px 0 18px"}}>Novo cliente</h2>
@@ -95,11 +144,35 @@ export default function Home() {
           <button className="btn" disabled={saving} style={{marginTop:15}}>{saving?"A GUARDAR...":"CRIAR ÁLBUM"}</button>
         </form>
       </div>
+
       <div className="eyebrow">ÁLBUNS EXISTENTES</div>
       <div className="grid">
-        {(data?.albums||[]).map((a:any)=><div className="card" key={a.id}><div className="cover"><b>{a.title}</b></div><div className="body"><div className="meta">{a.event_date||"Sem data"} · {a.photoCount||0} FOTOS</div></div></div>)}
+        {(data?.albums||[]).map((a:any)=><div className="card" key={a.id}>
+          <div className="cover"><b>{a.title}</b></div>
+          <div className="body">
+            <div className="meta">{a.event_date||"Sem data"} · {a.photoCount||0} FOTOS</div>
+            <div className="actions">
+              <button type="button" onClick={()=>{setUploadAlbum(a);setUploadStatus("");setError("");}}>ADICIONAR FOTOS</button>
+              <a className="actionsLink" href={`/g/${encodeURIComponent(a.client_id)}/${encodeURIComponent(a.slug)}`}>ABRIR</a>
+            </div>
+          </div>
+        </div>)}
       </div>
       {!data?.albums?.length&&<p className="notice">Ainda não existem álbuns. Cria o primeiro acima.</p>}
     </main>
+
+    {uploadAlbum && <div className="modal" onClick={()=>!uploading&&setUploadAlbum(null)}>
+      <div className="box" onClick={e=>e.stopPropagation()}>
+        <div className="eyebrow">UPLOAD · {uploadAlbum.title}</div>
+        <h2 style={{margin:"10px 0"}}>Adicionar fotografias</h2>
+        <p className="notice">Seleciona várias fotografias de uma vez. Podes enviar centenas, conforme o armazenamento disponível.</p>
+        <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={e=>uploadFiles(e.target.files)} />
+        <button className="btn" disabled={uploading} style={{width:"100%",marginTop:12}} onClick={()=>fileRef.current?.click()}>
+          {uploading ? "A ENVIAR..." : "ESCOLHER FOTOGRAFIAS"}
+        </button>
+        {uploadStatus&&<p className="notice" style={{marginTop:12}}>{uploadStatus}</p>}
+        {!uploading&&<button className="btn secondary" style={{width:"100%",marginTop:10}} onClick={()=>setUploadAlbum(null)}>FECHAR</button>}
+      </div>
+    </div>}
   </div>;
 }
