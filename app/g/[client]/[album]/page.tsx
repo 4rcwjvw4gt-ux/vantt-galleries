@@ -1,7 +1,7 @@
-"use client";import{useEffect,useState}from"react";
-export default function Gallery({params}:{params:{client:string;album:string}}){const[d,setD]=useState<any>(null),[pw,setPw]=useState(""),[error,setError]=useState("");
+"use client";import{useEffect,useState}from"react";import{useParams}from"next/navigation";
+export default function Gallery(){const params=useParams<{client:string;album:string}>(),[d,setD]=useState<any>(null),[pw,setPw]=useState(""),[error,setError]=useState("");
 async function load(password=""){const r=await fetch("/api/gallery?client="+encodeURIComponent(params.client)+"&album="+encodeURIComponent(params.album)+"&password="+encodeURIComponent(password));const j=await r.json();if(r.ok)setD(j);else setError(j.error||"Galeria não encontrada")}
-useEffect(()=>{load()},[]);
+useEffect(()=>{if(params.client&&params.album)load()},[params.client,params.album]);
 if(error)return <main className="password"><div><h2>Galeria não encontrada</h2><p className="notice">{error}</p></div></main>;
 if(!d)return <main className="password"><p className="notice">A carregar galeria...</p></main>;
 if(d.locked)return <main className="password"><form className="box" onSubmit={e=>{e.preventDefault();load(pw)}}><div className="eyebrow">PRIVATE GALLERY</div><h2>{d.album.title}</h2><p className="notice">Esta galeria está protegida.</p><div className="field"><label>PASSWORD</label><input type="password" value={pw} onChange={e=>setPw(e.target.value)}/></div><button className="btn" style={{width:"100%"}}>ABRIR GALERIA</button></form></main>;
