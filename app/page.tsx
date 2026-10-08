@@ -153,7 +153,7 @@ export default function Home() {
             <div className="meta">{a.event_date||"Sem data"} · {a.photoCount||0} FOTOS</div>
             <div className="actions">
               <button type="button" onClick={()=>{setUploadAlbum(a);setUploadStatus("");setError("");}}>ADICIONAR FOTOS</button>
-              <a className="actionsLink" href={`/g/${encodeURIComponent(a.client_id)}/${encodeURIComponent(a.slug)}`}>ABRIR</a>
+              <a className="actionsLink" href={`/g/${encodeURIComponent((data?.clients||[]).find((c:any)=>c.id===a.client_id)?.name||"")}/${encodeURIComponent(a.slug)}`}>ABRIR</a>
             </div>
           </div>
         </div>)}
