@@ -1,36 +1,18 @@
-# VANTT Galleries
+# VANTT GALLERIES
 
-Aplicação funcional para gestão de galerias fotográficas de eventos.
+Aplicação Next.js preparada para Vercel + Supabase.
 
-## Requisitos
-Node.js 20+
+- /login: acesso privado VANTT
+- /admin: gestão de álbuns e upload
+- /g/SLUG: galeria pública
+- Supabase Database para dados
+- Supabase Storage para fotografias
 
-## Instalação
-```bash
-npm install
-npm start
-```
-Abrir `http://localhost:3000`.
+## Configuração
+1. Criar projeto no Supabase.
+2. Executar supabase.sql no SQL Editor.
+3. Criar um utilizador em Authentication > Users.
+4. Adicionar no Vercel NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.
+5. Fazer redeploy.
 
-## Login inicial
-Email: `admin@vantt.pt`
-Password: `vantt2026`
-
-Altera em produção usando `ADMIN_EMAIL`, `ADMIN_PASSWORD` e `SESSION_SECRET`.
-
-## Funcionalidades
-- login admin
-- clientes e álbuns
-- DELUX pré-criado
-- criação de álbuns
-- upload múltiplo real de JPG/PNG/WEBP
-- thumbnails com Sharp
-- armazenamento persistente em `data/`
-- galerias públicas `/g/:client/:album`
-- password por galeria
-- download individual do original
-- download completo em ZIP
-- mobile responsive
-
-## Produção
-Para tornar a aplicação pública, colocar este projeto num servidor Node persistente. O disco `data/` precisa de armazenamento persistente. Para escalar, substituir o storage local por S3/Supabase Storage e a sessão em memória por Redis/DB.
+O Vercel não é usado para armazenamento persistente de fotografias.
