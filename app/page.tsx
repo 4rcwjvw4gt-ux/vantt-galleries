@@ -100,6 +100,26 @@ export default function Home() {
     setTimeout(() => setCopiedAlbum(null), 2000);
   }
 
+  async function importExistingPhotos(album: any) {
+    setError("");
+    setUploadStatus("A importar fotografias existentes...");
+    try {
+      const r = await fetch("/api/admin", {
+        method:"POST",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify({action:"import-storage",album_id:album.id,bucket:"Domingo 04"})
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || "Não foi possível importar as fotografias.");
+      await refresh();
+      setUploadStatus(j.imported ? `${j.imported} fotografias importadas para “${album.title}”.` : "Nenhuma fotografia nova encontrada.");
+      setTimeout(() => setUploadStatus(""), 3500);
+    } catch(e) {
+      setError(e instanceof Error ? e.message : "Erro ao importar fotografias.");
+      setUploadStatus("");
+    }
+  }
+
   async function uploadFiles(files: FileList | null) {
     if (!files || !uploadAlbum) return;
     setUploading(true); setError("");
@@ -191,7 +211,7 @@ export default function Home() {
           <div className="body">
             <div className="meta">{a.event_date||"Sem data"} · {a.photoCount||0} FOTOS</div>
             <div className="actions">
-              <button type="button" onClick={()=>{setUploadAlbum(a);setUploadStatus("");setError("");}}>ADICIONAR FOTOS</button>
+              <button type="button" onClick={()=>{setUploadAlbum(a);setUploadStatus("");setError("");}}>ADICIONAR FOTOS</button><button type="button" onClick={()=>importExistingPhotos(a)}>IMPORTAR DOMINGO 04</button>
               <button type="button" onClick={()=>copyGalleryLink(a)}>{copiedAlbum===a.id ? "LINK COPIADO ✓" : "COPIAR LINK"}</button>
               <a className="actionsLink" href={`/g/${encodeURIComponent((data?.clients||[]).find((c:any)=>c.id===a.client_id)?.name||"")}/${encodeURIComponent(a.slug)}`} target="_blank" rel="noreferrer">ABRIR</a>
             </div>
