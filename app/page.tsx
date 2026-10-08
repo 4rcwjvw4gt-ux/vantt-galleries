@@ -154,6 +154,14 @@ export default function Home() {
         </form>
       </div>
 
+      <div className="eyebrow" style={{marginTop:40}}>LINKS DOS CLIENTES</div>
+      <div className="grid" style={{marginTop:12,marginBottom:32}}>
+        {(data?.clients||[]).map((c:any)=>{
+          const url=`${typeof window!=="undefined"?window.location.origin:""}/c/${encodeURIComponent(c.name)}`;
+          return <div className="card" key={c.id}><div className="body"><div className="eyebrow">CLIENTE</div><h2 style={{margin:"8px 0"}}>{c.name}</h2><div className="actions"><button type="button" onClick={async()=>{await navigator.clipboard.writeText(url);setCopiedAlbum("client-"+c.id);setTimeout(()=>setCopiedAlbum(null),2000)}}>{copiedAlbum==="client-"+c.id?"LINK COPIADO ✓":"COPIAR LINK DA GALERIA"}</button><a className="actionsLink" href={url} target="_blank" rel="noreferrer">ABRIR</a></div></div></div>
+        })}
+      </div>
+
       <div className="eyebrow">ÁLBUNS EXISTENTES</div>
       <div className="grid">
         {(data?.albums||[]).map((a:any)=><div className="card" key={a.id}>
