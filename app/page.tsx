@@ -1,13 +1,107 @@
 "use client";
-import {useEffect,useState} from "react";import {createClient} from "@supabase/supabase-js";
 
-export default function Home(){const[authed,setAuthed]=useState(false),[data,setData]=useState<any>(null),[password,setPassword]=useState(""),[error,setError]=useState(""),[tab,setTab]=useState("dashboard"),[show,setShow]=useState(false),[title,setTitle]=useState(""),[clientId,setClientId]=useState(""),[uploading,setUploading]=useState(false);
-async function refresh(){const r=await fetch("/api/admin");if(r.ok){setData(await r.json());setAuthed(true)}}useEffect(()=>{refresh()},[]);
-async function login(e:any){e.preventDefault();const r=await fetch("/api/admin",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"login",password})});if(!r.ok){setError((await r.json()).error);return}refresh()}
-async function createAlbum(e:any){e.preventDefault();const r=await fetch("/api/admin",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"album",title,client_id:clientId||data.clients[0]?.id})});if(!r.ok){alert((await r.json()).error);return}setShow(false);setTitle("");refresh()}
-async function upload(albumId:string,files:FileList|null){if(!files?.length)return;setUploading(true);try{const sb=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL||"",process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY||"");for(const f of Array.from(files)){const u=await fetch("/api/admin",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"upload-url",album_id:albumId,filename:f.name})}).then(r=>r.json());if(!u.token)throw Error(u.error||"Falha no upload");const{error}=await sb.storage.from("photos").uploadToSignedUrl(u.path,u.token,f);if(error)throw error;const m=await fetch("/api/admin",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"photo",album_id:albumId,path:u.path,filename:f.name})});if(!m.ok)throw Error((await m.json()).error)}await refresh();alert("Upload concluído.")}catch(e:any){alert(e.message)}finally{setUploading(false)}}
-if(!authed)return <><header className="top"><div className="logo">VANTT <span className="purple">GALLERIES</span></div></header><main className="login"><form className="box" onSubmit={login}><div className="eyebrow">PRIVATE ACCESS</div><h1>VANTT Galleries</h1><div className="field"><label>PASSWORD</label><input type="password" value={password} onChange={e=>setPassword(e.target.value)} autoFocus/></div>{error&&<div className="error">{error}</div>}<button className="btn" style={{width:"100%",marginTop:15}}>ENTRAR</button></form></main></>;
-return <div className="shell"><header className="top"><div className="logo">VANTT <span className="purple">GALLERIES</span></div><button className="btn secondary" onClick={async()=>{await fetch("/api/admin",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"logout"})});location.reload()}}>SAIR</button></header><div className="layout"><aside className="side">{["dashboard","clients","albums"].map(x=><button className={tab===x?"active":""} onClick={()=>setTab(x)} key={x}>{x==="dashboard"?"Dashboard":x==="clients"?"Clientes":"Álbuns"}</button>)}</aside><main className="main">{tab==="dashboard"&&<><div className="head"><div><div className="eyebrow">CLIENT WORKSPACE</div><div className="title">DELUX</div></div><button className="btn" onClick={()=>setShow(true)}>+ NOVO ÁLBUM</button></div><div className="grid">{(data?.albums||[]).map((a:any)=><div className="card" key={a.id}><div className="cover"><b>{a.title}</b></div><div className="body"><div className="meta">{a.event_date||"Sem data"} · {a.photoCount||0} FOTOS</div><div className="actions"><button onClick={()=>document.getElementById("up-"+a.id)?.click()}>UPLOAD</button><input id={"up-"+a.id} hidden type="file" accept="image/*" multiple onChange={e=>upload(a.id,e.target.files)}/><a style={{color:"#fff",textDecoration:"none",fontSize:11,padding:"8px 10px"}} href={"/g/"+encodeURIComponent((data.clients.find((c:any)=>c.id===a.client_id)||{}).name||"DELUX")+"/"+a.slug} target="_blank">ABRIR</a></div></div></div>)}{!data?.albums?.length&&<p className="notice">Ainda não existem álbuns. Cria o primeiro.</p>}</div>{uploading&&<p className="notice">A carregar fotografias...</p>}</>}
-{tab==="clients"&&<><div className="eyebrow">WORKSPACE</div><div className="title">Clientes</div><div className="rows">{(data?.clients||[]).map((c:any)=><div className="row" key={c.id}><b>{c.name}</b><span className="meta">Cliente</span></div>)}</div></>}
-{tab==="albums"&&<><div className="eyebrow">LIBRARY</div><div className="title">Álbuns</div><div className="rows">{(data?.albums||[]).map((a:any)=><div className="row" key={a.id}><b>{a.title}</b><span className="meta">{a.photoCount||0} fotos</span></div>)}</div></>}
-</main></div>{show&&<div className="modal"><form className="box" onSubmit={createAlbum}><h2>Novo álbum</h2><div className="field"><label>NOME</label><input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Ex.: Unknown" required/></div><div className="field"><label>CLIENTE</label><select value={clientId||data.clients[0]?.id||""} onChange={e=>setClientId(e.target.value)} style={{background:"#111",color:"#fff",padding:12,border:"1px solid #2b2b2b",borderRadius:8}}>{data.clients.map((c:any)=><option key={c.id} value={c.id}>{c.name}</option>)}</select></div><div className="actions"><button type="submit" className="btn">CRIAR</button><button type="button" className="btn secondary" onClick={()=>setShow(false)}>CANCELAR</button></div></form></div>}</div>}
+import { useEffect, useState } from "react";
+
+type Data = { clients: any[]; albums: any[] };
+
+export default function Home() {
+  const [authed, setAuthed] = useState(false);
+  const [checking, setChecking] = useState(true);
+  const [data, setData] = useState<Data | null>(null);
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+
+  async function refresh() {
+    try {
+      const r = await fetch("/api/admin", { cache: "no-store" });
+      if (!r.ok) {
+        setAuthed(false);
+        setChecking(false);
+        return;
+      }
+      setData(await r.json());
+      setAuthed(true);
+    } catch {
+      setError("Não foi possível ligar ao servidor.");
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  useEffect(() => { refresh(); }, []);
+
+  async function login(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    const r = await fetch("/api/admin", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "login", password })
+    });
+    const j = await r.json();
+    if (!r.ok) {
+      setError(j.error || "Password incorreta");
+      return;
+    }
+    setPassword("");
+    setChecking(true);
+    await refresh();
+  }
+
+  async function logout() {
+    await fetch("/api/admin", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "logout" })
+    });
+    setAuthed(false);
+    setData(null);
+  }
+
+  if (checking) {
+    return <main className="login"><div className="box"><div className="eyebrow">VANTT GALLERIES</div><h1>A ligar...</h1></div></main>;
+  }
+
+  if (!authed) {
+    return (
+      <>
+        <header className="top"><div className="logo">VANTT <span className="purple">GALLERIES</span></div></header>
+        <main className="login">
+          <form className="box" onSubmit={login}>
+            <div className="eyebrow">PRIVATE ACCESS</div>
+            <h1>VANTT Galleries</h1>
+            <div className="field">
+              <label>PASSWORD</label>
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)} autoFocus />
+            </div>
+            {error && <div className="error">{error}</div>}
+            <button className="btn" style={{ width: "100%", marginTop: 15 }}>ENTRAR</button>
+          </form>
+        </main>
+      </>
+    );
+  }
+
+  return (
+    <div className="shell">
+      <header className="top">
+        <div className="logo">VANTT <span className="purple">GALLERIES</span></div>
+        <button className="btn secondary" onClick={logout}>SAIR</button>
+      </header>
+      <main className="main">
+        <div className="head">
+          <div><div className="eyebrow">PRIVATE ADMIN</div><div className="title">Galerias</div></div>
+        </div>
+        <div className="grid">
+          {(data?.albums || []).map((a: any) => (
+            <div className="card" key={a.id}>
+              <div className="cover"><b>{a.title}</b></div>
+              <div className="body"><div className="meta">{a.event_date || "Sem data"} · {a.photoCount || 0} FOTOS</div></div>
+            </div>
+          ))}
+        </div>
+        {!data?.albums?.length && <p className="notice">O painel abriu. Ainda não existem álbuns.</p>}
+      </main>
+    </div>
+  );
+}
