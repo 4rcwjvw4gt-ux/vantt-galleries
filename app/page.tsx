@@ -142,7 +142,7 @@ export default function Home() {
     }
   }
 
-  if (checking) return <main className="login"><div className="box"><div className="eyebrow">VANTT GALLERIES</div><h1>A ligar...</h1></div></main>;
+  if (checking) return <main className="login"><div className="box"><div className="eyebrow">VANTT GALLERIES</div><h1>A ligar...</h1>{error&&<div className="error" style={{marginTop:16}}>{error}</div>}</div></main>;
 
   if (!authed) return <>
     <header className="top"><div className="logo">VANTT <span className="purple">GALLERIES</span></div></header>
