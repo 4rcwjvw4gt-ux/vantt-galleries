@@ -25,22 +25,44 @@ export default function Home() {
 
   async function refresh() {
     try {
-      const r = await fetch("/api/admin", { cache: "no-store" });
-      if (!r.ok) { setAuthed(false); setChecking(false); return; }
-      setData(await r.json());
+      const r = await fetch("/api/admin", { cache: "no-store", credentials: "include" });
+      const j = await r.json().catch(() => ({}));
+      if (r.status === 401) {
+        setAuthed(false);
+        setChecking(false);
+        return;
+      }
+      if (!r.ok) {
+        setAuthed(false);
+        setError(j.error || "O painel não conseguiu ligar à base de dados.");
+        setChecking(false);
+        return;
+      }
+      setData(j);
       setAuthed(true);
-    } catch { setError("Não foi possível ligar ao servidor."); }
-    finally { setChecking(false); }
+      setError("");
+    } catch {
+      setAuthed(false);
+      setError("Não foi possível ligar ao servidor.");
+    } finally {
+      setChecking(false);
+    }
   }
 
   useEffect(() => { refresh(); }, []);
 
   async function login(e: React.FormEvent) {
     e.preventDefault(); setError("");
-    const r = await fetch("/api/admin", { method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({action:"login",password}) });
-    const j = await r.json();
-    if (!r.ok) { setError(j.error || "Password incorreta"); return; }
-    setPassword(""); setChecking(true); await refresh();
+    try {
+      const r = await fetch("/api/admin", { method:"POST", headers:{"content-type":"application/json"}, credentials:"include", body:JSON.stringify({action:"login",password}) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { setError(j.error || "Password incorreta"); return; }
+      setPassword("");
+      setChecking(true);
+      await refresh();
+    } catch {
+      setError("Não foi possível ligar ao servidor.");
+    }
   }
 
   async function logout() {
