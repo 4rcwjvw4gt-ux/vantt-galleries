@@ -1,0 +1,5 @@
+'use client'
+import{useState}from'react'
+import{useRouter}from'next/navigation'
+import{supabase}from'../../lib/supabase'
+export default function Login(){const[e,setE]=useState(''),[p,setP]=useState(''),[err,setErr]=useState('');const r=useRouter();async function go(x:any){x.preventDefault();const q=await supabase.auth.signInWithPassword({email:e,password:p});if(q.error)setErr(q.error.message);else r.push('/admin')}return <main className="wrap"><div className="form"><div className="brand">VANTT <span>GALLERIES</span></div><h1>Admin</h1><p className="muted">Acesso privado da VANTT.</p><form onSubmit={go}><div className="field"><label>Email</label><input type="email" required value={e} onChange={x=>setE(x.target.value)}/></div><div className="field"><label>Password</label><input type="password" required value={p} onChange={x=>setP(x.target.value)}/></div>{err&&<div className="notice">{err}</div>}<button className="btn primary">Entrar</button></form></div></main>}
