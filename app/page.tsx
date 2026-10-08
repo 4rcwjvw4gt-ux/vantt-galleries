@@ -20,6 +20,7 @@ export default function Home() {
   const [uploadAlbum, setUploadAlbum] = useState<any>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState("");
+  const [copiedAlbum, setCopiedAlbum] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function refresh() {
@@ -67,6 +68,14 @@ export default function Home() {
       setAlbumTitle(""); setAlbumDate(""); setAlbumDescription(""); await refresh();
     } catch(e){setError(e instanceof Error?e.message:"Erro ao criar álbum");}
     finally{setSaving(false);}
+  }
+
+  async function copyGalleryLink(album: any) {
+    const client = (data?.clients || []).find((c:any) => c.id === album.client_id);
+    const url = `${window.location.origin}/g/${encodeURIComponent(client?.name || "")}/${encodeURIComponent(album.slug)}`;
+    await navigator.clipboard.writeText(url);
+    setCopiedAlbum(album.id);
+    setTimeout(() => setCopiedAlbum(null), 2000);
   }
 
   async function uploadFiles(files: FileList | null) {
@@ -153,7 +162,8 @@ export default function Home() {
             <div className="meta">{a.event_date||"Sem data"} · {a.photoCount||0} FOTOS</div>
             <div className="actions">
               <button type="button" onClick={()=>{setUploadAlbum(a);setUploadStatus("");setError("");}}>ADICIONAR FOTOS</button>
-              <a className="actionsLink" href={`/g/${encodeURIComponent((data?.clients||[]).find((c:any)=>c.id===a.client_id)?.name||"")}/${encodeURIComponent(a.slug)}`}>ABRIR</a>
+              <button type="button" onClick={()=>copyGalleryLink(a)}>{copiedAlbum===a.id ? "LINK COPIADO ✓" : "COPIAR LINK"}</button>
+              <a className="actionsLink" href={`/g/${encodeURIComponent((data?.clients||[]).find((c:any)=>c.id===a.client_id)?.name||"")}/${encodeURIComponent(a.slug)}`} target="_blank" rel="noreferrer">ABRIR</a>
             </div>
           </div>
         </div>)}
